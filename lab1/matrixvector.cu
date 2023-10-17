@@ -65,6 +65,8 @@ bool check_result(int *R_cpu, int *R_gpu, size_t m)
     {
         if (R_cpu[i] != R_gpu[i])
         {
+            printf("Error: CPU and GPU results do not match\n");
+            printf("R_cpu[%d] = %d, R_gpu[%d] = %d\n", i, R_cpu[i], i, R_gpu[i]);
             return false;
         }
     }
@@ -150,10 +152,6 @@ int main(int argc, char **argv)
         if (!check_condition(R, "Memory allocation failed for R"))
             continue;
 
-        double cpu_time = measure_time_func_cpu(matrixVectorMul_cpu, M, V, R, dimension);
-
-        printf("Sequential version: %f seconds\n", cpu_time);
-
         int *M_device = nullptr;
         int *V_device = nullptr;
         int *R_device = nullptr;
@@ -172,6 +170,9 @@ int main(int argc, char **argv)
         int *R_gpu = (int *)malloc(size_V);
         if (!check_condition(R_gpu, "Memory allocation failed for R_gpu"))
             continue;
+
+        double cpu_time = measure_time_func_cpu(matrixVectorMul_cpu, M, V, R, dimension);
+        printf("Sequential version: %f seconds\n", cpu_time);
 
         double gpu_time = measure_time_func_gpu(matrixVectorMul_gpu, M, V, R_gpu, M_device, V_device, R_device, size_M, size_V, dimension);
         printf("GPU version: %f seconds\n", gpu_time);
