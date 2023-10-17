@@ -65,6 +65,8 @@ bool check_result(int *R_cpu, int *R_gpu, size_t m)
     {
         if (R_cpu[i] != R_gpu[i])
         {
+            printf("Error: CPU and GPU results do not match\n");
+            printf("R_cpu[%d] = %d, R_gpu[%d] = %d\n", i, R_cpu[i], i, R_gpu[i]);
             return false;
         }
     }
