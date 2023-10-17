@@ -129,8 +129,7 @@ int main(int argc, char **argv)
         num_blocks = atoi(argv[1]);
         num_threads = atoi(argv[2]);
     }
-    // size_t test_dimensions[10] = {256, 512, 1024, 4096, 8192, 16384, 32768, 65536, 131072, 262144};
-    size_t test_dimensions[3] = {65536, 131072, 262144};
+    size_t test_dimensions[10] = {256, 512, 1024, 4096, 8192, 16384, 32768, 65536, 131072, 262144};
 
     for (size_t dimension : test_dimensions)
     {
@@ -150,7 +149,7 @@ int main(int argc, char **argv)
         int *R = (int *)malloc(size_V);
         assertm(R, "Memory allocation failed for R");
 
-                int *M_device = nullptr, *V_device = nullptr, *R_device = nullptr;
+        int *M_device = nullptr, *V_device = nullptr, *R_device = nullptr;
         cudaError_t err = cudaMalloc(&M_device, size_M);
         assertm(err == cudaSuccess, "Failed to allocate device matrix M");
 
