@@ -9,6 +9,7 @@
 #include <cuda.h>
 #include <assert.h>
 #include <iostream>
+#define NUM_DIMENSIONS 10
 #define assertm(exp, msg) assert(((void)msg, exp))
 
 int num_blocks, num_threads;
@@ -146,7 +147,6 @@ public:
     size_t size;
 
     operator int *() { return data; }
-
     operator bool() { return data != NULL && size > 0; }
 
     int &operator[](size_t index) { return data[index]; }
@@ -193,18 +193,8 @@ public:
     size_t size;
 
     operator int *() { return data; }
-
     operator bool() { return data != NULL && size > 0; }
 };
-
-void printArray(IntArray &arr)
-{
-    for (size_t i = 0; i < arr.size; i++)
-    {
-        printf("%d ", arr[i]);
-    }
-    printf("\n");
-}
 
 int main(int argc, char **argv)
 {
@@ -218,10 +208,10 @@ int main(int argc, char **argv)
         num_blocks = atoi(argv[1]);
         num_threads = atoi(argv[2]);
     }
-    size_t test_dimensions[10] = {256, 512, 1024, 4096, 8192, 16384, 32768, 65536, 131072, 262144};
+    size_t test_dimensions[NUM_DIMENSIONS] = {256, 512, 1024, 4096, 8192, 16384, 32768, 65536, 131072, 262144};
     // size_t test_dimensions[1] = {5};
 
-    for (size_t dim_i = 0; dim_i < 10; ++dim_i)
+    for (size_t dim_i = 0; dim_i < NUM_DIMENSIONS; ++dim_i)
     {
         size_t dimension = test_dimensions[dim_i];
         printf("Dimension: %lu\n", dimension);
