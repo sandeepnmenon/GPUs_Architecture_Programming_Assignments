@@ -121,10 +121,12 @@ int main(int argc, char **argv)
         num_blocks = atoi(argv[1]);
         num_threads = atoi(argv[2]);
     }
-    int test_dimensions[10] = {256, 512, 1024, 4096, 8192, 16384, 32768, 65536, 131072, 262144};
+    size_t test_dimensions[10] = {256, 512, 1024, 4096, 8192, 16384, 32768, 65536, 131072, 262144};
 
-    for (int dimension : test_dimensions)
+    for (size_t dimension : test_dimensions)
     {
+        printf("Dimension: %lu\n", dimension);
+
         size_t size_M = dimension * dimension * sizeof(int);
         int *M = (int *)malloc(size_M);
         assertm(M, "Memory allocation failed for M");
@@ -141,7 +143,6 @@ int main(int argc, char **argv)
 
         double cpu_time = measure_time_func_cpu(matrixVectorMul_cpu, M, V, R, dimension);
 
-        printf("Dimension: %d\n", dimension);
         printf("Sequential version: %f seconds\n", cpu_time);
 
         int *M_device = nullptr;
@@ -167,7 +168,8 @@ int main(int argc, char **argv)
 
         assertm(check_result(R, R_gpu, dimension), "CPU and GPU results do not match");
 
-        printf("Speedup: %f\n", cpu_time / gpu_time);
+        float speedup = cpu_time / gpu_time;
+        printf("Speedup: %f\n", speedup);
 
         free(M);
         free(V);
