@@ -119,6 +119,55 @@ bool check_condition(bool cond, const char *msg)
     return cond;
 }
 
+class IntArray
+{
+public:
+    IntArray(size_t size) : data(nullptr), size(size)
+    {
+        data = (int *)malloc(size);
+        if (!data)
+            fprintf(stderr, "Error: Failed to allocate memory\n");
+    }
+    ~IntArray()
+    {
+        if (data)
+            free(data);
+    }
+
+    int *data;
+    size_t size;
+
+    operator int *() { return data; }
+
+    explicit operator bool() { return data != nullptr && size > 0; }
+};
+
+class IntArrayDevice
+{
+public:
+    IntArrayDevice(size_t size) : data(nullptr), size(size)
+    {
+        cudaError_t err = cudaMalloc(&data, size);
+        if (err != cudaSuccess)
+        {
+            fprintf(stderr, "Error: Failed to allocate CUDA memory\n");
+            data = nullptr;
+        }
+    }
+    ~IntArrayDevice()
+    {
+        if (data)
+            cudaFree(data);
+    }
+
+    int *data;
+    size_t size;
+
+    operator int *() { return data; }
+
+    explicit operator bool() { return data != nullptr && size > 0; }
+};
+
 int main(int argc, char **argv)
 {
     if (argc != 3)
@@ -138,52 +187,60 @@ int main(int argc, char **argv)
         printf("Dimension: %lu\n", dimension);
 
         size_t size_M = dimension * dimension * sizeof(int);
-        int *M = (int *)malloc(size_M);
-        assertm(M, "Memory allocation failed for M");
+        IntArray M(size_M);
+        if (!check_condition(M, "Memory allocation failed for M"))
+            continue;
 
         size_t size_V = dimension * sizeof(int);
-        int *V = (int *)malloc(size_V);
-        assertm(V, "Memory allocation failed for V");
+        IntArray V(size_V);
+        if (!check_condition(V, "Memory allocation failed for V"))
+            continue;
 
         srand(time(0));
         fill_random(M, V, dimension);
 
-        int *R = (int *)malloc(size_V);
-        assertm(R, "Memory allocation failed for R");
+        IntArray R(size_V);
+        if (!check_condition(R, "Memory allocation failed for R"))
+            continue;
 
-        int *M_device = nullptr, *V_device = nullptr, *R_device = nullptr;
-        cudaError_t err = cudaMalloc(&M_device, size_M);
-        assertm(err == cudaSuccess, "Failed to allocate device matrix M");
+        IntArrayDevice M_device(size_M);
+        if (!check_condition(M_device, "Memory allocation failed for M_device"))
+            continue;
 
-        err = cudaMalloc(&V_device, dimension * sizeof(int));
-        assertm(err == cudaSuccess, "Failed to allocate device vector V");
+        IntArrayDevice V_device(size_V);
+        if (!check_condition(V_device, "Memory allocation failed for V_device"))
+            continue;
 
-        err = cudaMalloc(&R_device, dimension * sizeof(int));
-        assertm(err == cudaSuccess, "Failed to allocate device vector R");
+        IntArrayDevice R_device(size_V);
+        if (!check_condition(R_device, "Memory allocation failed for R_device"))
+            continue;
 
-        int *R_gpu = (int *)malloc(size_V);
-        assertm(R_gpu, "Memory allocation failed for R_gpu");
+        IntArray R_gpu(size_V);
+        if (!check_condition(R_gpu, "Memory allocation failed for R_gpu"))
+            continue;
 
-        double cpu_time = measure_time_func_cpu(matrixVectorMul_cpu, M, V, R, dimension);
+        double cpu_time = measure_time_func_cpu(matrixVectorMul_cpu, M.data, V.data, R.data, dimension);
         printf("Sequential version: %f seconds\n", cpu_time);
 
-        double gpu_time = measure_time_func_gpu(matrixVectorMul_gpu, M, V, R_gpu, M_device, V_device, R_device, size_M, size_V, dimension);
+        double gpu_time = measure_time_func_gpu(matrixVectorMul_gpu, M.data, V.data, R_gpu.data, M_device.data, V_device.data, R_device.data, size_M, size_V, dimension);
         printf("GPU version: %f seconds\n", gpu_time);
 
-        err = cudaMemcpy(R_gpu, R_device, size_V, cudaMemcpyDeviceToHost);
-        assertm(err == cudaSuccess, "Failed to copy vector R from device to host");
+        cudaError_t err = cudaMemcpy(R_gpu, R_device, size_V, cudaMemcpyDeviceToHost);
+        if (!check_condition(err == cudaSuccess, "Failed to copy vector R from device to host"))
+            continue;
 
-        assertm(check_result(R, R_gpu, dimension), "CPU and GPU results do not match");
+        if (!check_condition(check_result(R.data, R_gpu.data, dimension), "CPU and GPU results do not match"))
+            continue;
 
         float speedup = cpu_time / gpu_time;
         printf("Speedup: %f\n", speedup);
 
-        free(M);
-        free(V);
-        free(R);
-        cudaFree(M_device);
-        cudaFree(V_device);
-        cudaFree(R_device);
+        if (M_device)
+            cudaFree(M_device);
+        if (V_device)
+            cudaFree(V_device);
+        if (R_device)
+            cudaFree(R_device);
     }
 
     return 0;
