@@ -69,7 +69,7 @@ long double measure_time_func_cpu(void (*func)(int *, int *, int *, size_t), int
     return ((long double)(end - start)) / CLOCKS_PER_SEC;
 }
 
-double measure_time_func_gpu(void (*func_gpu)(int *, int *, int *, size_t), int *M, int *V, int *R, int *M_device, int *V_device, int *R_device, size_t size_M, size_t size_V, size_t m)
+long double measure_time_func_gpu(void (*func_gpu)(int *, int *, int *, size_t), int *M, int *V, int *R, int *M_device, int *V_device, int *R_device, size_t size_M, size_t size_V, size_t m)
 {
     clock_t start, end;
     cudaError_t err;
@@ -95,7 +95,7 @@ double measure_time_func_gpu(void (*func_gpu)(int *, int *, int *, size_t), int 
     // End timing
     end = clock();
 
-    return ((double)(end - start)) / CLOCKS_PER_SEC;
+    return ((long double)(end - start)) / CLOCKS_PER_SEC;
 }
 
 bool check_condition(bool cond, const char *msg)
@@ -126,7 +126,7 @@ public:
 
     operator int *() { return data; }
 
-    explicit operator bool() { return data != NULL && size > 0; }
+    operator bool() { return data != NULL && size > 0; }
 
     int &operator[](size_t index) { return data[index]; }
     int operator[](size_t index) const { return data[index]; }
@@ -173,7 +173,7 @@ public:
 
     operator int *() { return data; }
 
-    explicit operator bool() { return data != NULL && size > 0; }
+    operator bool() { return data != NULL && size > 0; }
 };
 
 void printArray(IntArray &arr)
