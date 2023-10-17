@@ -8,11 +8,11 @@
 
 int num_blocks, num_threads;
 
-__global__ void matrixVectorMulKernel(int *M_d, int *V_d, int *R_d, int m);
-void matrixVectorMul_cpu(int *M, int *V, int *R, int m);
-void matrixVectorMul_gpu(int *M, int *V, int *R, int m);
+__global__ void matrixVectorMulKernel(int *M_d, int *V_d, int *R_d, size_t m);
+void matrixVectorMul_cpu(int *M, int *V, int *R, size_t m);
+void matrixVectorMul_gpu(int *M, int *V, int *R, size_t m);
 
-void matrixVectorMul_cpu(int *M, int *V, int *R, int m)
+void matrixVectorMul_cpu(int *M, int *V, int *R, size_t m)
 {
     for (int i = 0; i < m; i++)
     {
@@ -26,7 +26,7 @@ void matrixVectorMul_cpu(int *M, int *V, int *R, int m)
     }
 }
 
-__global__ void matrixVectorMulKernel(int *M_d, int *V_d, int *R_d, int m)
+__global__ void matrixVectorMulKernel(int *M_d, int *V_d, int *R_d, size_t m)
 {
     int threadId = blockIdx.x * blockDim.x + threadIdx.x;
     int stride = blockDim.x * gridDim.x;
@@ -41,13 +41,13 @@ __global__ void matrixVectorMulKernel(int *M_d, int *V_d, int *R_d, int m)
     }
 }
 
-void matrixVectorMul_gpu(int *M, int *V, int *R, int m)
+void matrixVectorMul_gpu(int *M, int *V, int *R, size_t m)
 {
     matrixVectorMulKernel<<<num_blocks, num_threads>>>(M, V, R, m);
     cudaDeviceSynchronize();
 }
 
-void fill_random(int *M, int *V, int m)
+void fill_random(int *M, int *V, size_t m)
 {
     for (int i = 0; i < m; i++)
     {
@@ -59,7 +59,7 @@ void fill_random(int *M, int *V, int m)
     }
 }
 
-bool check_result(int *R_cpu, int *R_gpu, int m)
+bool check_result(int *R_cpu, int *R_gpu, size_t m)
 {
     for (int i = 0; i < m; i++)
     {
@@ -71,7 +71,7 @@ bool check_result(int *R_cpu, int *R_gpu, int m)
     return true;
 }
 
-double measure_time_func_cpu(void (*func)(int *, int *, int *, int), int *M, int *V, int *R, int m)
+double measure_time_func_cpu(void (*func)(int *, int *, int *, size_t), int *M, int *V, int *R, size_t m)
 {
     clock_t start, end;
     start = clock();
@@ -80,7 +80,7 @@ double measure_time_func_cpu(void (*func)(int *, int *, int *, int), int *M, int
     return ((double)(end - start)) / CLOCKS_PER_SEC;
 }
 
-double measure_time_func_gpu(void (*func_gpu)(int *, int *, int *, int), int *M, int *V, int *R, int *M_device, int *V_device, int *R_device, size_t size_M, size_t size_V, int m)
+double measure_time_func_gpu(void (*func_gpu)(int *, int *, int *, size_t), int *M, int *V, int *R, int *M_device, int *V_device, int *R_device, size_t size_M, size_t size_V, size_t m)
 {
     clock_t start, end;
     cudaError_t err;
@@ -121,7 +121,8 @@ int main(int argc, char **argv)
         num_blocks = atoi(argv[1]);
         num_threads = atoi(argv[2]);
     }
-    size_t test_dimensions[10] = {256, 512, 1024, 4096, 8192, 16384, 32768, 65536, 131072, 262144};
+    // size_t test_dimensions[10] = {256, 512, 1024, 4096, 8192, 16384, 32768, 65536, 131072, 262144};
+    size_t test_dimensions[3] = {65536, 131072, 262144};
 
     for (size_t dimension : test_dimensions)
     {
