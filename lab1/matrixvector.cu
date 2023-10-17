@@ -1,4 +1,8 @@
+#ifdef USE_CHRONO
+#include <chrono>
+#else
 #include <time.h>
+#endif
 #include <stdio.h>
 #include <stdlib.h>
 #include <limits.h>
@@ -60,22 +64,35 @@ void fill_random(int *M, int *V, size_t m)
     }
 }
 
-long double measure_time_func_cpu(void (*func)(int *, int *, int *, size_t), int *M, int *V, int *R, size_t m)
+double measure_time_func_cpu(void (*func)(int *, int *, int *, size_t), int *M, int *V, int *R, size_t m)
 {
-    clock_t start, end;
-    start = clock();
+#ifdef USE_CHRONO
+    std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
+#else
+    clock_t start = clock();
+#endif
+
     func(M, V, R, m);
-    end = clock();
-    return ((long double)(end - start)) / CLOCKS_PER_SEC;
+
+#ifdef USE_CHRONO
+    std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+    return elapsed.count();
+#else
+    clock_t end = clock();
+    return ((double)(end - start)) / CLOCKS_PER_SEC;
+#endif
 }
 
-long double measure_time_func_gpu(void (*func_gpu)(int *, int *, int *, size_t), int *M, int *V, int *R, int *M_device, int *V_device, int *R_device, size_t size_M, size_t size_V, size_t m)
+double measure_time_func_gpu(void (*func_gpu)(int *, int *, int *, size_t), int *M, int *V, int *R, int *M_device, int *V_device, int *R_device, size_t size_M, size_t size_V, size_t m)
 {
-    clock_t start, end;
-    cudaError_t err;
-
     // Start timing
-    start = clock();
+#ifdef USE_CHRONO
+    std::chrono::time_point<std::chrono::high_resolution_clock> start = std::chrono::high_resolution_clock::now();
+#else
+    clock_t start = clock();
+#endif
+    cudaError_t err;
 
     // Copy data to device
     err = cudaMemcpy(M_device, M, size_M * sizeof(int), cudaMemcpyHostToDevice);
@@ -86,16 +103,20 @@ long double measure_time_func_gpu(void (*func_gpu)(int *, int *, int *, size_t),
 
     // Execute the kernel function
     func_gpu(M_device, V_device, R_device, m);
-    cudaDeviceSynchronize();
 
     // Copy result back to host
     err = cudaMemcpy(R, R_device, size_V * sizeof(int), cudaMemcpyDeviceToHost);
     assertm(err == cudaSuccess, "Failed to copy vector R from device to host");
 
     // End timing
-    end = clock();
-
-    return ((long double)(end - start)) / CLOCKS_PER_SEC;
+#ifdef USE_CHRONO
+    std::chrono::time_point<std::chrono::high_resolution_clock> end = std::chrono::high_resolution_clock::now();
+    std::chrono::duration<double> elapsed = end - start;
+    return elapsed.count();
+#else
+    clock_t end = clock();
+    return ((double)(end - start)) / CLOCKS_PER_SEC;
+#endif
 }
 
 bool check_condition(bool cond, const char *msg)
@@ -238,17 +259,17 @@ int main(int argc, char **argv)
         if (!check_condition(R_gpu, "Memory allocation failed for R_gpu"))
             continue;
 
-        long double cpu_time = measure_time_func_cpu(matrixVectorMul_cpu, M, V, R, dimension);
-        printf("Sequential version: %Lf seconds\n", cpu_time);
+        double cpu_time = measure_time_func_cpu(matrixVectorMul_cpu, M, V, R, dimension);
+        printf("Sequential version: %lf seconds\n", cpu_time);
 
-        long double gpu_time = measure_time_func_gpu(matrixVectorMul_gpu, M, V, R_gpu, M_device, V_device, R_device, size_M, size_V, dimension);
-        printf("GPU version: %Lf seconds\n", gpu_time);
+        double gpu_time = measure_time_func_gpu(matrixVectorMul_gpu, M, V, R_gpu, M_device, V_device, R_device, size_M, size_V, dimension);
+        printf("GPU version: %lf seconds\n", gpu_time);
 
         if (!check_condition(R == R_gpu, "CPU and GPU results do not match"))
             continue;
 
-        long double speedup = cpu_time / gpu_time;
-        printf("Speedup: %Lf\n", speedup);
+        double speedup = cpu_time / gpu_time;
+        printf("Speedup: %lf\n", speedup);
     }
 
     return 0;
