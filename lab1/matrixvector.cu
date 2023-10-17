@@ -65,8 +65,6 @@ bool check_result(int *R_cpu, int *R_gpu, size_t m)
     {
         if (R_cpu[i] != R_gpu[i])
         {
-            printf("Error: CPU and GPU results do not match\n");
-            printf("R_cpu[%d] = %d, R_gpu[%d] = %d\n", i, R_cpu[i], i, R_gpu[i]);
             return false;
         }
     }
@@ -87,6 +85,7 @@ double measure_time_func_gpu(void (*func_gpu)(int *, int *, int *, size_t), int 
     clock_t start, end;
     cudaError_t err;
 
+    // Start timing
     start = clock();
 
     // Copy data to device
@@ -104,6 +103,7 @@ double measure_time_func_gpu(void (*func_gpu)(int *, int *, int *, size_t), int 
     err = cudaMemcpy(R, R_device, size_V, cudaMemcpyDeviceToHost);
     assertm(err == cudaSuccess, "Failed to copy vector R from device to host");
 
+    // End timing
     end = clock();
 
     return ((double)(end - start)) / CLOCKS_PER_SEC;
@@ -129,7 +129,8 @@ int main(int argc, char **argv)
         num_blocks = atoi(argv[1]);
         num_threads = atoi(argv[2]);
     }
-    size_t test_dimensions[10] = {256, 512, 1024, 4096, 8192, 16384, 32768, 65536, 131072, 262144};
+    // size_t test_dimensions[10] = {256, 512, 1024, 4096, 8192, 16384, 32768, 65536, 131072, 262144};
+    size_t test_dimensions[3] = {65536, 131072, 262144};
 
     for (size_t dimension : test_dimensions)
     {
@@ -137,39 +138,30 @@ int main(int argc, char **argv)
 
         size_t size_M = dimension * dimension * sizeof(int);
         int *M = (int *)malloc(size_M);
-        if (!check_condition(M, "Memory allocation failed for M"))
-            continue;
+        assertm(M, "Memory allocation failed for M");
 
         size_t size_V = dimension * sizeof(int);
         int *V = (int *)malloc(size_V);
-        if (!check_condition(V, "Memory allocation failed for V"))
-            continue;
+        assertm(V, "Memory allocation failed for V");
 
         srand(time(0));
         fill_random(M, V, dimension);
 
         int *R = (int *)malloc(size_V);
-        if (!check_condition(R, "Memory allocation failed for R"))
-            continue;
+        assertm(R, "Memory allocation failed for R");
 
-        int *M_device = nullptr;
-        int *V_device = nullptr;
-        int *R_device = nullptr;
+                int *M_device = nullptr, *V_device = nullptr, *R_device = nullptr;
         cudaError_t err = cudaMalloc(&M_device, size_M);
-        if (!check_condition(err == cudaSuccess, "Failed to allocate device matrix M"))
-            continue;
+        assertm(err == cudaSuccess, "Failed to allocate device matrix M");
 
         err = cudaMalloc(&V_device, dimension * sizeof(int));
-        if (!check_condition(err == cudaSuccess, "Failed to allocate device vector V"))
-            continue;
+        assertm(err == cudaSuccess, "Failed to allocate device vector V");
 
         err = cudaMalloc(&R_device, dimension * sizeof(int));
-        if (!check_condition(err == cudaSuccess, "Failed to allocate device vector R"))
-            continue;
+        assertm(err == cudaSuccess, "Failed to allocate device vector R");
 
         int *R_gpu = (int *)malloc(size_V);
-        if (!check_condition(R_gpu, "Memory allocation failed for R_gpu"))
-            continue;
+        assertm(R_gpu, "Memory allocation failed for R_gpu");
 
         double cpu_time = measure_time_func_cpu(matrixVectorMul_cpu, M, V, R, dimension);
         printf("Sequential version: %f seconds\n", cpu_time);
@@ -178,11 +170,9 @@ int main(int argc, char **argv)
         printf("GPU version: %f seconds\n", gpu_time);
 
         err = cudaMemcpy(R_gpu, R_device, size_V, cudaMemcpyDeviceToHost);
-        if (!check_condition(err == cudaSuccess, "Failed to copy vector R from device to host"))
-            continue;
+        assertm(err == cudaSuccess, "Failed to copy vector R from device to host");
 
-        if (!check_condition(check_result(R, R_gpu, dimension), "CPU and GPU results do not match"))
-            continue;
+        assertm(check_result(R, R_gpu, dimension), "CPU and GPU results do not match");
 
         float speedup = cpu_time / gpu_time;
         printf("Speedup: %f\n", speedup);
@@ -194,5 +184,6 @@ int main(int argc, char **argv)
         cudaFree(V_device);
         cudaFree(R_device);
     }
+
     return 0;
 }
