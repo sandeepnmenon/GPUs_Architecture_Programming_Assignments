@@ -8,7 +8,6 @@
 #include <limits.h>
 #include <cuda.h>
 #include <assert.h>
-#define NUM_DIMENSIONS 10
 #define assertm(exp, msg) assert(((void)msg, exp))
 
 int num_blocks, num_threads;
@@ -119,14 +118,6 @@ double measure_time_func_gpu(void (*func_gpu)(int *, int *, int *, size_t), int 
 #endif
 }
 
-bool check_condition(bool cond, const char *msg)
-{
-    if (!cond)
-        fprintf(stderr, "Error: %s\n", msg);
-
-    return cond;
-}
-
 class IntArray
 {
 public:
@@ -159,7 +150,7 @@ public:
         {
             if (data[i] != other.data[i])
             {
-                // printf("Mismatch at index %lu: %d != %d\n", i, data[i], other.data[i]);
+                printf("Mismatch at index %lu: %d != %d\n", i, data[i], other.data[i]);
                 return false;
             }
         }
@@ -197,69 +188,59 @@ public:
 
 int main(int argc, char **argv)
 {
-    if (argc != 3)
+    size_t dimension;
+    if (argc != 4)
     {
-        printf("Usage: %s <num_blocks> <num_threads>\n", argv[0]);
+        printf("Usage: %s <num> <blocks> <num_threads>\n", argv[0]);
         return 1;
     }
     else
     {
-        num_blocks = atoi(argv[1]);
-        num_threads = atoi(argv[2]);
+        dimension = atoi(argv[1]);
+        num_blocks = atoi(argv[2]);
+        num_threads = atoi(argv[3]);
     }
-    size_t test_dimensions[NUM_DIMENSIONS] = {256, 512, 1024, 4096, 8192, 16384, 32768, 65536, 131072, 262144};
     // size_t test_dimensions[1] = {5};
 
-    for (size_t dim_i = 0; dim_i < NUM_DIMENSIONS; ++dim_i)
-    {
-        size_t dimension = test_dimensions[dim_i];
-        printf("Dimension: %lu\n", dimension);
+    printf("Dimension: %lu\n", dimension);
 
-        size_t size_M = dimension * dimension;
-        IntArray M(size_M);
-        if (!check_condition(M, "Memory allocation failed for M"))
-            continue;
+    size_t size_M = dimension * dimension;
+    IntArray M(size_M);
+    assertm(M, "Memory allocation failed for M");
 
-        size_t size_V = dimension;
-        IntArray V(size_V);
-        if (!check_condition(V, "Memory allocation failed for V"))
-            continue;
+    size_t size_V = dimension;
+    IntArray V(size_V);
+    assertm(V, "Memory allocation failed for V");
 
-        srand(time(0));
-        fill_random(M, V, dimension);
+    srand(time(0));
+    fill_random(M, V, dimension);
 
-        IntArray R(size_V);
-        if (!check_condition(R, "Memory allocation failed for R"))
-            continue;
+    IntArray R_cpu(size_V);
+    assertm(R_cpu, "Memory allocation failed for R_cpu");
 
-        IntArrayDevice M_device(size_M);
-        if (!check_condition(M_device, "Memory allocation failed for M_device"))
-            continue;
+    IntArrayDevice M_device(size_M);
+    assertm(M_device, "Memory allocation failed for M_device");
 
-        IntArrayDevice V_device(size_V);
-        if (!check_condition(V_device, "Memory allocation failed for V_device"))
-            continue;
+    IntArrayDevice V_device(size_V);
+    assertm(V_device, "Memory allocation failed for V_device");
 
-        IntArrayDevice R_device(size_V);
-        if (!check_condition(R_device, "Memory allocation failed for R_device"))
-            continue;
+    IntArrayDevice R_device(size_V);
+    assertm(R_device, "Memory allocation failed for R_device");
 
-        IntArray R_gpu(size_V);
-        if (!check_condition(R_gpu, "Memory allocation failed for R_gpu"))
-            continue;
+    IntArray R_gpu(size_V);
+    assertm(R_gpu, "Memory allocation failed for R_gpu");
 
-        double cpu_time = measure_time_func_cpu(matrixVectorMul_cpu, M, V, R, dimension);
-        printf("Sequential version: %lf seconds\n", cpu_time);
+    double cpu_time = measure_time_func_cpu(matrixVectorMul_cpu, M, V, R_cpu, dimension);
+    printf("Sequential version: %lf seconds\n", cpu_time);
 
-        double gpu_time = measure_time_func_gpu(matrixVectorMul_gpu, M, V, R_gpu, M_device, V_device, R_device, size_M, size_V, dimension);
-        printf("GPU version: %lf seconds\n", gpu_time);
+    double gpu_time = measure_time_func_gpu(matrixVectorMul_gpu, M, V, R_gpu, M_device, V_device, R_device, size_M, size_V, dimension);
+    printf("GPU version: %lf seconds\n", gpu_time);
 
-        if (!check_condition(R == R_gpu, "CPU and GPU results do not match"))
-            continue;
+    double speedup = cpu_time / gpu_time;
+    printf("Speedup: %lf\n", speedup);
 
-        double speedup = cpu_time / gpu_time;
-        printf("Speedup: %lf\n", speedup);
-    }
+    if (R_cpu != R_gpu)
+        printf("CPU and GPU results do not match\n");
 
     return 0;
 }
