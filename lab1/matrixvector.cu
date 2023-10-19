@@ -236,8 +236,10 @@ int main(int argc, char **argv)
     double gpu_time = measure_time_func_gpu(matrixVectorMul_gpu, M, V, R_gpu, M_device, V_device, R_device, size_M, size_V, dimension);
     printf("GPU version: %lf seconds\n", gpu_time);
 
+#ifdef USE_CHRONO
     double speedup = cpu_time / gpu_time;
     printf("Speedup: %lf\n", speedup);
+#endif
 
     if (R_cpu != R_gpu)
         printf("CPU and GPU results do not match\n");
