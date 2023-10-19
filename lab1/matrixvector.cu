@@ -8,7 +8,6 @@
 #include <limits.h>
 #include <cuda.h>
 #include <assert.h>
-#include <iostream>
 #define NUM_DIMENSIONS 10
 #define assertm(exp, msg) assert(((void)msg, exp))
 
