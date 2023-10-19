@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # Define the dimensions and parameters
-DIMENSIONS=(256 512 1024)
+DIMENSIONS=(256 512 1024 4096 8192 16384 32768)
 NUM_BLOCKS=4
 NUM_THREADS=64
 NUM_RUNS=5
