@@ -143,11 +143,49 @@ void seq_heat_dist(float *playground, unsigned int N, unsigned int iterations)
     }
 }
 
+__global__ void heatDistKernel(float *playground, float *temp, unsigned int N)
+{
+    int i = blockIdx.x * blockDim.x + threadIdx.x;
+    int j = blockIdx.y * blockDim.y + threadIdx.y;
+
+    if (i > 0 && i < N - 1 && j > 0 && j < N - 1)
+    {
+        temp[index(i, j, N)] = (playground[index(i - 1, j, N)] +
+                                playground[index(i + 1, j, N)] +
+                                playground[index(i, j - 1, N)] +
+                                playground[index(i, j + 1, N)]) /
+                               4.0;
+    }
+}
+
 /***************** The GPU version: Write your code here *********************/
 /* This function can call one or more kernels if you want ********************/
 void gpu_heat_dist(float *playground, unsigned int N, unsigned int iterations)
 {
+    float *playground_device, *temp_device;
+    size_t size = N * N * sizeof(float);
 
-    /* Here you have to write any cuda dynamic allocations, any communications between device and host, any number of kernel
-       calls, etc. */
+    cudaMalloc(&playground_device, size);
+    cudaMalloc(&temp_device, size);
+
+    cudaMemcpy(playground_device, playground, size, cudaMemcpyHostToDevice);
+    cudaMemcpy(temp_device, playground, size, cudaMemcpyHostToDevice);
+
+    dim3 dimBlock(16, 16);
+    dim3 dimGrid(625, 625);
+
+    for (int k = 0; k < iterations; ++k)
+    {
+        heatDistKernel<<<dimGrid, dimBlock>>>(playground_device, temp_device, N);
+        cudaDeviceSynchronize();
+
+        float *temp = playground_device;
+        playground_device = temp_device;
+        temp_device = temp;
+    }
+
+    cudaMemcpy(playground, playground_device, size, cudaMemcpyDeviceToHost);
+
+    cudaFree(playground_device);
+    cudaFree(temp_device);
 }
