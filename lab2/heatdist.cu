@@ -145,16 +145,24 @@ void seq_heat_dist(float *playground, unsigned int N, unsigned int iterations)
 
 __global__ void heatDistKernel(float *playground, float *temp, unsigned int N)
 {
-    int i = blockIdx.x * blockDim.x + threadIdx.x;
-    int j = blockIdx.y * blockDim.y + threadIdx.y;
+    int threadX = blockIdx.x * blockDim.x + threadIdx.x;
+    int threadY = blockIdx.y * blockDim.y + threadIdx.y;
+    int strideX = blockDim.x * gridDim.x;
+    int strideY = blockDim.y * gridDim.y;
 
-    if (i > 0 && i < N - 1 && j > 0 && j < N - 1)
+    for (int i = threadX; i < N; i += strideX)
     {
-        temp[index(i, j, N)] = (playground[index(i - 1, j, N)] +
-                                playground[index(i + 1, j, N)] +
-                                playground[index(i, j - 1, N)] +
-                                playground[index(i, j + 1, N)]) /
-                               4.0;
+        for (int j = threadY; j < N; j += strideY)
+        {
+            if (i > 0 && i < N - 1 && j > 0 && j < N - 1)
+            {
+                temp[index(i, j, N)] = (playground[index(i - 1, j, N)] +
+                                        playground[index(i + 1, j, N)] +
+                                        playground[index(i, j - 1, N)] +
+                                        playground[index(i, j + 1, N)]) /
+                                       4.0;
+            }
+        }
     }
 }
 
@@ -162,6 +170,9 @@ __global__ void heatDistKernel(float *playground, float *temp, unsigned int N)
 /* This function can call one or more kernels if you want ********************/
 void gpu_heat_dist(float *playground, unsigned int N, unsigned int iterations)
 {
+#ifdef DEBUG
+    printDeviceProperties();
+#endif
     float *playground_device, *temp_device;
     size_t size = N * N * sizeof(float);
 
@@ -188,4 +199,25 @@ void gpu_heat_dist(float *playground, unsigned int N, unsigned int iterations)
 
     cudaFree(playground_device);
     cudaFree(temp_device);
+}
+
+void printDeviceProperties()
+{
+    int device;
+    cudaDeviceProp properties;
+
+    cudaGetDevice(&device);
+    cudaGetDeviceProperties(&properties, device);
+
+    printf("Max Threads per Block: %d\n", properties.maxThreadsPerBlock);
+    printf("Max Block Dimensions: %d x %d x %d\n",
+           properties.maxThreadsDim[0],
+           properties.maxThreadsDim[1],
+           properties.maxThreadsDim[2]);
+    printf("Max Grid Dimensions: %d x %d x %d\n",
+           properties.maxGridSize[0],
+           properties.maxGridSize[1],
+           properties.maxGridSize[2]);
+
+    printf("Number of Streaming Multiprocessors (SMs): %d\n", properties.multiProcessorCount);
 }
