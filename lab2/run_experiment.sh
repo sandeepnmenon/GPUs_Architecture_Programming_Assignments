@@ -5,6 +5,9 @@ DIMENSIONS=(100 500 1000 10000)
 ITERATIONS=(50 100)
 NUM_RUNS=5
 
+# Compile the program
+nvcc -o heatdist heatdist.cu
+
 echo "Starting experiment..."
 
 # Loop over the specified dimensions
@@ -16,13 +19,13 @@ for DIM in "${DIMENSIONS[@]}"; do
         total_time_cpu=0
         total_time_gpu=0
 
+        # Run the heatdist program for CPU and extract the time
+        time_cpu=$(./heatdist $DIM $ITER 0 | grep "Time taken" | awk '{print $4}')
+        total_time_cpu=$(echo "$total_time_cpu + $time_cpu" | bc)
+
         # Run the program multiple times for both CPU and GPU
         for ((i=1; i<=$NUM_RUNS; i++)); do
             echo "  Run $i..."
-
-            # Run the heatdist program for CPU and extract the time
-            time_cpu=$(./heatdist $DIM $ITER 0 | grep "Time taken" | awk '{print $4}')
-            total_time_cpu=$(echo "$total_time_cpu + $time_cpu" | bc)
 
             # Run the heatdist program for GPU and extract the time
             time_gpu=$(./heatdist $DIM $ITER 1 | grep "Time taken" | awk '{print $4}')
